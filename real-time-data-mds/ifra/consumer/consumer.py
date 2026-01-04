@@ -5,7 +5,7 @@ from kafka import KafkaConsumer
 import boto3
 from dotenv import load_dotenv
 
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", "producer", ".env")
+dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path=dotenv_path)
 
 kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
