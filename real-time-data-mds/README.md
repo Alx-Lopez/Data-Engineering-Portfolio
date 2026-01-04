@@ -70,3 +70,38 @@ The pipeline consists of the following stages:
 * Add **Great Expectations** for more granular data quality testing within the Airflow DAG.
 * Integrate CI/CD using GitHub Actions for automated dbt testing.
 * Look to Deploy in Cloud Solution  
+
+## Troubleshooting Notes
+### Challenges Faced
+- Kafka local connectivity required correct advertised listeners and using `localhost:29092` from host processes.
+- Airflow webserver failures due to a stale PID file when Gunicorn did not shut down cleanly.
+- Airflow tasks couldn't read local `.env` until it was mounted inside the containers.
+- MinIO endpoint needed Docker service DNS (`http://minio:9000`) instead of `localhost` when running inside Airflow.
+- Snowflake permissions blocked dbt models on schema `COMMON` until grants were applied for the role in use.
+- dbt source/model parsing errors caused by YAML formatting and incorrect `source()` Jinja syntax.
+- JSON field names in `bronze_stock_quotes_raw` did not match model expectations, producing NULLs.
+
+### Important Commands
+- Docker services:
+  - `docker compose up -d zookeeper kafka`
+  - `docker compose up -d --force-recreate airflow-webserver airflow-scheduler airflow-init`
+  - `docker compose logs --tail 200 airflow-webserver`
+- Airflow (stale PID cleanup):
+  - `docker compose exec airflow-webserver rm -f /opt/airflow/airflow-webserver.pid`
+  - `docker compose restart airflow-webserver`
+- Airflow user creation:
+  - `docker compose exec airflow-webserver airflow users create --username admin --firstname ### --lastname ### --role Admin --email a@example.com --password <password>`
+- dbt (local profile):
+  - `cd real-time-data-mds/dbt_stocks`
+  - `set -a; source ../ifra/.env; set +a`
+  - `dbt run`
+  - `dbt run --debug`
+- Snowflake grants for `COMMON` schema (run as admin role):
+  - `GRANT USAGE ON DATABASE STOCKS_MDS TO ROLE PUBLIC;`
+  - `GRANT USAGE ON SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT CREATE TABLE ON SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT CREATE VIEW ON SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT USAGE ON ALL STAGES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+  - `GRANT USAGE ON FUTURE STAGES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
