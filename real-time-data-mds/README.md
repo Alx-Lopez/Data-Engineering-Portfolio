@@ -6,7 +6,8 @@ This project is an end-to-end data engineering solution designed to ingest, proc
 The goal of this project was to simulate a production-grade environment where data reliability, scalability, and latency are critical factors.
 
 ## Architecture
-![Pipeline Architecture]([INSERT_LINK_TO_YOUR_DIAGRAM_IMAGE_HERE])
+![Pipeline Architecture](/real-time-data-mds/System_Diagram_v1.jpeg)
+(Version 1)
 
 The pipeline consists of the following stages:
 1.  **Ingestion:** Python scripts fetch real-time data from financial APIs.
