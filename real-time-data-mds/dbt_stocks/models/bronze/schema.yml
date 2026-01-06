@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: bronze_stg_stock_quotes
+    description: "Canonicalized stock quote events with deduped event_id."
+    columns:
+      - name: event_id
+        tests:
+          - not_null
+          - unique
+      - name: source_system
+        tests:
+          - not_null
+      - name: ticker
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]
+      - name: current_price
+        tests:
+          - not_null
+      - name: market_timestamp
+        tests:
+          - not_null

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StockQuoteEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "source_system",
+    "ticker",
+    "current_price",
+    "high_price",
+    "low_price",
+    "open_price",
+    "previous_close_price",
+    "timestamp"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "minLength": 1 },
+    "source_system": { "type": "string", "minLength": 1 },
+    "ticker": { "type": "string", "minLength": 1 },
+    "current_price": { "type": "number" },
+    "high_price": { "type": "number" },
+    "low_price": { "type": "number" },
+    "open_price": { "type": "number" },
+    "previous_close_price": { "type": "number" },
+    "timestamp": { "type": "integer" }
+  },
+  "additionalProperties": true
+}

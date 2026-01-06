@@ -31,14 +31,17 @@ print(f"Kafka bootstrap servers: {kafka_bootstrap_servers}")
 def fetch_quote(ticker):
     Quote = finnhub_client.quote(ticker)
     if Quote:
+        event_ts = int(time.time())
         return {
+            "event_id": f"{ticker}:{event_ts}",
+            "source_system": "finnhub",
             "ticker": ticker,
             "current_price": Quote['c'],
             "high_price": Quote['h'],
             "low_price": Quote['l'],
             "open_price": Quote['o'],
             "previous_close_price": Quote['pc'],
-            "timestamp": int(time.time())
+            "timestamp": event_ts,
         }
     return None
     

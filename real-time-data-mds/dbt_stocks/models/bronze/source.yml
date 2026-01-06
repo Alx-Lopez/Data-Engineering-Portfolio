@@ -6,3 +6,4 @@ sources:
     schema: common
     tables:
       - name: bronze_stock_quotes_raw
+      - name: bronze_stock_quotes
