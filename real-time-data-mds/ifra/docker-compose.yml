@@ -61,7 +61,7 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./.env:/opt/airflow/.env
+      - ./.env.docker:/opt/airflow/.env
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
     ports:
@@ -78,7 +78,7 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./.env:/opt/airflow/.env
+      - ./.env.docker:/opt/airflow/.env
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
     command: >
@@ -96,7 +96,7 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
     volumes:
       - ./dags:/opt/airflow/dags
-      - ./.env:/opt/airflow/.env
+      - ./.env.docker:/opt/airflow/.env
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
     command: scheduler

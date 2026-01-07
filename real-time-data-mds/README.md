@@ -105,6 +105,40 @@ To make the pipeline idempotent end-to-end:
 - `REPLAY_HOURS` limits replay to the last N hours (set `0` to replay everything).
 - Airflow automation: enable the `replay_quarantine` DAG to replay once per hour.
 
+## Databricks + Iceberg Roadmap
+- Keep current Parquet landing as Bronze; introduce Iceberg tables on S3 for ML/feature work in Spark.
+- Create Iceberg Bronze over the existing partitioned layout, then build Silver/Gold tables for model features.
+- Databricks SQL notebook stub: `real-time-data-mds/databricks/iceberg_bronze.sql`.
+- Migration plan (MinIO → S3 + Glue/Iceberg catalog): `real-time-data-mds/docs/minio_to_s3_iceberg_plan.md`.
+
+## Pipeline Diagram (Snowflake + Databricks)
+```mermaid
+flowchart LR
+  A[Producer: Finnhub API] -->|Kafka| B[Kafka Topic: stock-quotes]
+  B --> C[Consumer: Parquet Writer]
+  C -->|Parquet| D[Object Storage: S3 or MinIO topic=... dt=... hr=... partition=...]
+
+  D -->|Airflow: external stage| E[Snowflake Stage]
+  E -->|COPY INTO| F[Snowflake Bronze Raw]
+  F -->|MERGE event_id| G[Snowflake Bronze Canonical]
+  G -->|dbt models| H[Snowflake Silver/Gold]
+
+  D -->|Iceberg table| I[Databricks Bronze Iceberg]
+  I -->|Spark transforms| J[Databricks Silver/Gold]
+  J --> K[ML Features / Training]
+```
+
+## Local S3 with IAM Role
+- Setup guide: `real-time-data-mds/docs/local_s3_from_local.md`
+- Profile helper: `real-time-data-mds/scripts/aws_role_profile_setup.sh`
+## Snowflake External Stage (No AWS Keys in Airflow)
+- Guide: `real-time-data-mds/docs/snowflake_storage_integration.md`
+
+## Producer Direct to S3 (Optional)
+- Script: `real-time-data-mds/ifra/producer/producer.py` (set `DIRECT_TO_S3=true`)
+- Env: set `S3_BUCKET`, and (optionally) `AWS_PROFILE`/`AWS_REGION`; set `USE_MINIO=true` only if you want to write to MinIO via `MINIO_ENDPOINT_URL`.
+- Run from `real-time-data-mds/ifra/producer`: `DIRECT_TO_S3=true uv run python producer.py`
+
 ## Troubleshooting Notes
 ### Challenges Faced
 - Kafka local connectivity required correct advertised listeners and using `localhost:29092` from host processes.
@@ -126,6 +160,11 @@ To make the pipeline idempotent end-to-end:
 - Snowflake load can fail with `invalid identifier 'LOAD_TS'` if older tables were created without new columns; the DAG now adds missing columns automatically.
 - To clear the Snowflake stage manually, run `python real-time-data-mds/ifra/scripts/clear_snowflake_stage.py`.
 - To purge old JSON files in an internal stage: `ENV_FILE=real-time-data-mds/ifra/.env.local STAGE_PATTERN='.*\\.json' python real-time-data-mds/ifra/scripts/clear_snowflake_stage.py`.
+- S3 `NoSuchBucket` errors are often caused by using MinIO endpoint vars with AWS; set `USE_MINIO=false` and clear `MINIO_ENDPOINT_URL` in `.env.local`.
+- `ProfileNotFound` means your AWS CLI profile doesn’t exist; create it or leave `AWS_PROFILE` empty to use the default profile.
+- Env files are consolidated to `ifra/.env.local`, `ifra/.env.docker`, and `ifra/.env.example` only; `producer.py` and `consumer.py` auto-pick the right one.
+- Snowflake loads now use an external S3 stage (no download step); set `SNOWFLAKE_STAGE_URL` and either `SNOWFLAKE_STORAGE_INTEGRATION` or `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`.
+- Snowflake 404 login errors usually mean `SNOWFLAKE_ACCOUNT` is still a placeholder (e.g., `your-snowflake-account`) in `.env.docker` or the wrong account locator is set.
 
 
 ### Important Commands

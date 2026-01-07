@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from lib.extract_helpers import download_from_minio, load_to_snowflake
+from lib.extract_helpers import load_to_snowflake
 
 default_args = {
     "owner": "airflow",
@@ -24,14 +24,7 @@ with DAG(
 ) as dag:
 
     task1 = PythonOperator(
-        task_id="download_minio",
-        python_callable=download_from_minio,
-    )
-
-    task2 = PythonOperator(
         task_id="load_snowflake",
         python_callable=load_to_snowflake,
         provide_context=True,
     )
-
-    task1 >> task2

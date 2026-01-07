@@ -14,7 +14,20 @@ from kafka import KafkaConsumer, KafkaProducer, TopicPartition
 from kafka.structs import OffsetAndMetadata
 
 
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+env_file = (os.getenv("ENV_FILE") or "").strip()
+if env_file:
+    dotenv_path = env_file
+else:
+    base_dir = os.path.join(os.path.dirname(__file__), "..")
+    local_env = os.path.join(base_dir, ".env.local")
+    docker_env = os.path.join(base_dir, ".env.docker")
+    example_env = os.path.join(base_dir, ".env.example")
+    if os.path.exists(local_env):
+        dotenv_path = local_env
+    elif os.path.exists(docker_env):
+        dotenv_path = docker_env
+    else:
+        dotenv_path = example_env
 load_dotenv(dotenv_path=dotenv_path)
 
 kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
@@ -22,7 +35,10 @@ kafka_topic = os.getenv("KAFKA_TOPIC")
 minio_endpoint_url = os.getenv("MINIO_ENDPOINT_URL")
 minio_access_key = os.getenv("MINIO_ACCESS_KEY")
 minio_secret_key = os.getenv("MINIO_SECRET_KEY")
-minio_bucket_name = os.getenv("MINIO_BUCKET_NAME")
+bucket_name = os.getenv("S3_BUCKET") or os.getenv("MINIO_BUCKET_NAME")
+use_minio = (os.getenv("USE_MINIO") or "").strip().lower() == "true"
+aws_region = (os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "").strip() or None
+aws_profile = (os.getenv("AWS_PROFILE") or "").strip() or None
 
 batch_size = int(os.getenv("BATCH_SIZE", "500"))  # records per flush target
 max_batch_seconds = int(os.getenv("MAX_BATCH_SECONDS", "30"))
@@ -45,17 +61,24 @@ kafka_dlq_topic = (os.getenv("KAFKA_DLQ_TOPIC") or "").strip()
 
 if not kafka_bootstrap_servers or not kafka_topic:
     raise ValueError("KAFKA_BOOTSTRAP_SERVERS and KAFKA_TOPIC must be set")
-if not minio_endpoint_url or not minio_access_key or not minio_secret_key:
-    raise ValueError("MINIO_ENDPOINT_URL, MINIO_ACCESS_KEY, and MINIO_SECRET_KEY must be set")
-if not minio_bucket_name:
-    raise ValueError("MINIO_BUCKET_NAME must be set")
+if use_minio and (not minio_endpoint_url or not minio_access_key or not minio_secret_key):
+    raise ValueError("USE_MINIO=true requires MINIO_ENDPOINT_URL, MINIO_ACCESS_KEY, and MINIO_SECRET_KEY")
+if not bucket_name:
+    raise ValueError("S3_BUCKET (or MINIO_BUCKET_NAME) must be set")
 
-s3 = boto3.client(
-    "s3",
-    endpoint_url=minio_endpoint_url,
-    aws_access_key_id=minio_access_key,
-    aws_secret_access_key=minio_secret_key,
-)
+if not aws_profile:
+    os.environ.pop("AWS_PROFILE", None)
+session = boto3.Session(profile_name=aws_profile or None, region_name=aws_region or None)
+
+if use_minio:
+    s3 = session.client(
+        "s3",
+        endpoint_url=minio_endpoint_url,
+        aws_access_key_id=minio_access_key,
+        aws_secret_access_key=minio_secret_key,
+    )
+else:
+    s3 = session.client("s3")
 
 schema_validator = None
 if schema_validation_enabled:
@@ -80,7 +103,7 @@ def _object_key(topic, partition, dt, hr, bucket_start, bucket_end):
 
 def _object_exists(key):
     try:
-        s3.head_object(Bucket=minio_bucket_name, Key=key)
+        s3.head_object(Bucket=bucket_name, Key=key)
         return True
     except s3.exceptions.ClientError as exc:
         code = exc.response.get("Error", {}).get("Code")
@@ -114,7 +137,7 @@ def _flush_batch(key, batch):
     buffer.seek(0)
 
     s3.put_object(
-        Bucket=minio_bucket_name,
+        Bucket=bucket_name,
         Key=object_key,
         Body=buffer.read(),
         ContentType="application/x-parquet",
@@ -168,7 +191,7 @@ def _send_to_dlq(topic, partition, offset, event_ts, payload, reason):
         )
         body = json.dumps(record, separators=(",", ":")).encode("utf-8")
         s3.put_object(
-            Bucket=minio_bucket_name,
+        Bucket=bucket_name,
             Key=object_key,
             Body=body,
             ContentType="application/json",
@@ -180,7 +203,7 @@ def _send_to_dlq(topic, partition, offset, event_ts, payload, reason):
         )
         body = json.dumps(record, separators=(",", ":")).encode("utf-8")
         s3.put_object(
-            Bucket=minio_bucket_name,
+        Bucket=bucket_name,
             Key=object_key,
             Body=body,
             ContentType="application/json",

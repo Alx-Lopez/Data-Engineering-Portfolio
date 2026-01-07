@@ -137,6 +137,10 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+real-time-data-mds/ifra/.env
+real-time-data-mds/ifra/.env.local
+real-time-data-mds/ifra/.env.docker
+real-time-data-mds/ifra/producer/.env
 .venv
 env/
 venv/
@@ -205,3 +209,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+real-time-data-mds/ifra/.env.docker
+real-time-data-mds/ifra/.env.local
+real-time-data-mds/ifra/logs/scheduler/latest
+AWSCLIV2.pkg

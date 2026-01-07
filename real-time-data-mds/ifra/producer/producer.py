@@ -8,7 +8,20 @@ import finnhub
 
 
 
-dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+env_file = (os.getenv("ENV_FILE") or "").strip()
+if env_file:
+    dotenv_path = env_file
+else:
+    base_dir = os.path.join(os.path.dirname(__file__), "..")
+    local_env = os.path.join(base_dir, ".env.local")
+    docker_env = os.path.join(base_dir, ".env.docker")
+    example_env = os.path.join(base_dir, ".env.example")
+    if os.path.exists(local_env):
+        dotenv_path = local_env
+    elif os.path.exists(docker_env):
+        dotenv_path = docker_env
+    else:
+        dotenv_path = example_env
 load_dotenv(dotenv_path=dotenv_path)
 
 api_key = str(os.getenv("API_KEY"))
