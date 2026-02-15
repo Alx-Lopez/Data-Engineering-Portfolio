@@ -5,6 +5,7 @@ This project is an end-to-end data engineering solution designed to ingest, proc
 
 The goal of this project was to simulate a production-grade environment where data reliability, scalability, and latency are critical factors.
 
+
 ## Architecture
 ![Pipeline Architecture]([INSERT_LINK_TO_YOUR_DIAGRAM_IMAGE_HERE])
 
@@ -16,6 +17,20 @@ The pipeline consists of the following stages:
 5.  **Warehousing:** Data is loaded into **Snowflake** (Raw Layer).
 6.  **Transformation:** **dbt (data build tool)** performs modular transformations to move data from *Raw* to *Cleaned* to *Business Ready* (Medallion Architecture).
 7.  **Visualization:** **Power BI** connects to the serving layer for near real-time dashboards.
+
+## Why This Architecture
+
+This architecture was intentionally designed to balance low-latency ingestion, reliability, replayability, and analytical performance, which are common requirements in production data platforms.
+
+Kafka → Object Storage → Snowflake was chosen over direct streaming into the warehouse to create a durable, replayable landing zone. Persisting events in S3/MinIO decouples ingestion from consumption, allowing safe reprocessing, backfills, and downstream system changes without re-hitting external APIs.
+
+A Medallion Architecture (Bronze / Silver / Gold) in Snowflake separates raw data ingestion from business logic, improving data quality, governance, and long-term maintainability. This approach also enables independent scaling and ownership of ingestion, transformation, and analytics layers.
+
+The pipeline favors idempotent, batch-oriented loads (COPY INTO + MERGE) over continuous micro-batching into Snowflake. This reduces cost, avoids warehouse contention, and provides deterministic recovery behavior during failures or replays—an intentional tradeoff accepting slightly higher latency for operational stability.
+
+Airflow orchestrates workflows, but does not perform transformations. Heavy data processing is pushed down to Snowflake and dbt, aligning with cloud data warehouse best practices and minimizing orchestration complexity.
+
+Finally, the system prioritizes data correctness over raw speed. Schema validation, DLQs, quarantine paths, and replay mechanisms ensure bad data does not silently corrupt analytical tables—reflecting real-world reliability requirements in financial and analytics platforms.
 
 ## Tech Stack
 * **Language:** Python 3.12+
@@ -110,6 +125,9 @@ To make the pipeline idempotent end-to-end:
 - Create Iceberg Bronze over the existing partitioned layout, then build Silver/Gold tables for model features.
 - Databricks SQL notebook stub: `real-time-data-mds/databricks/iceberg_bronze.sql`.
 - Migration plan (MinIO → S3 + Glue/Iceberg catalog): `real-time-data-mds/docs/minio_to_s3_iceberg_plan.md`.
+ - Silver notebook: `real-time-data-mds/databricks/iceberg_silver.sql`
+ - Gold features (1h horizon): `real-time-data-mds/databricks/iceberg_gold_features.sql`
+ - Gold star schema (fact + dims): `real-time-data-mds/databricks/iceberg_gold_star.sql`
 
 ## Pipeline Diagram (Snowflake + Databricks)
 ```mermaid
@@ -133,6 +151,20 @@ flowchart LR
 - Profile helper: `real-time-data-mds/scripts/aws_role_profile_setup.sh`
 ## Snowflake External Stage (No AWS Keys in Airflow)
 - Guide: `real-time-data-mds/docs/snowflake_storage_integration.md`
+## Orchestration Boundaries (Airflow vs Snowflake vs dbt)
+- Airflow: scheduling, dependency mgmt, retries, backfills, alerting
+- Snowflake: bulk load + set-based operations (COPY/MERGE), optional Tasks/Streams for incremental loads
+- dbt: transformations, tests, docs
+- Tasks/Streams template: `real-time-data-mds/docs/snowflake_tasks_streams.md`
+## Observability & SLAs
+- Freshness, anomalies, and lineage plan: `real-time-data-mds/docs/observability.md`
+## Snowflake Performance
+- Optimization guide: `real-time-data-mds/docs/snowflake_optimization.md`
+## Governance & Security
+- Quick wins guide: `real-time-data-mds/docs/governance_security.md`
+## dbt Docs & Exposures
+- Run `dbt docs generate` and `dbt docs serve` from `real-time-data-mds/dbt_stocks`
+- Exposures defined in `real-time-data-mds/dbt_stocks/models/gold/exposures.yml`
 
 ## Producer Direct to S3 (Optional)
 - Script: `real-time-data-mds/ifra/producer/producer.py` (set `DIRECT_TO_S3=true`)
@@ -191,3 +223,9 @@ flowchart LR
   - `GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
   - `GRANT USAGE ON ALL STAGES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
   - `GRANT USAGE ON FUTURE STAGES IN SCHEMA STOCKS_MDS.COMMON TO ROLE PUBLIC;`
+
+
+### Keywords
+data engineering, real-time data pipeline, streaming data, kafka, snowflake,
+dbt, airflow, python, s3, data lake, data warehouse, medallion architecture,
+incremental models, idempotent ingestion, analytics engineering

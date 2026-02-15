@@ -1,0 +1,6 @@
+ticker,company_name,sector,industry,exchange,updated_at
+AAPL,Apple Inc,Technology,Consumer Electronics,NASDAQ,2026-01-01
+GOOGL,Alphabet Inc,Communication Services,Internet Content & Information,NASDAQ,2026-01-01
+MSFT,Microsoft Corp,Technology,Software - Infrastructure,NASDAQ,2026-01-01
+AMZN,Amazon.com Inc,Consumer Cyclical,Internet Retail,NASDAQ,2026-01-01
+TSLA,Tesla Inc,Consumer Cyclical,Auto Manufacturers,NASDAQ,2026-01-01

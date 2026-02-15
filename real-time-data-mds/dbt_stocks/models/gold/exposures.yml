@@ -1,0 +1,35 @@
+version: 2
+
+exposures:
+  - name: stock_kpi_dashboard
+    type: dashboard
+    maturity: high
+    url: https://example.com/bi/stock-kpi
+    description: "BI dashboard for current price KPIs by ticker."
+    depends_on:
+      - ref('gold_kpi')
+    owner:
+      name: Data Engineering
+      email: data@example.com
+
+  - name: stock_candlestick_dashboard
+    type: dashboard
+    maturity: medium
+    url: https://example.com/bi/stock-candlestick
+    description: "Candlestick trend view for recent price movement."
+    depends_on:
+      - ref('gold_candlestick')
+    owner:
+      name: Data Engineering
+      email: data@example.com
+
+  - name: volatility_treechart
+    type: dashboard
+    maturity: medium
+    url: https://example.com/bi/stock-treechart
+    description: "Volatility and relative volatility by ticker."
+    depends_on:
+      - ref('gold_treechart')
+    owner:
+      name: Data Engineering
+      email: data@example.com
